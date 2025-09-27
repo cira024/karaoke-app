@@ -1,15 +1,15 @@
-const express = require('express');
-const mysql = require('mysql2');
-require('dotenv').config();
+import express, { Request, Response } from 'express';
+import mysql from 'mysql2';
+import 'dotenv/config';
 
 const app = express();
 app.use(express.json());
 
 const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME
+  host: process.env.DB_HOST as string,
+  user: process.env.DB_USER as string,
+  password: process.env.DB_PASSWORD as string,
+  database: process.env.DB_NAME as string
 });
 
 db.connect((err: Error | null) => {
@@ -17,7 +17,7 @@ db.connect((err: Error | null) => {
   console.log('Connected to MySQL');
 });
 
-app.get('/api/songs', (req: express.Request, res: express.Response) => {
+app.get('/api/songs', (req: Request, res: Response) => {
   db.query('SELECT * FROM songs', (err: Error | null, results: any[]) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
