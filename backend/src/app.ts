@@ -1,12 +1,13 @@
 import express, { Request, Response } from 'express';
 import mysql from 'mysql2';
 import 'dotenv/config';
-import { comparePassword, generateToken } from './auth';  // Dodaj ovaj import
+import { comparePassword, generateToken } from './auth';  
+import { verifyToken, isAdmin } from './middleware/authMiddleware';
 
 const app = express();
 app.use(express.json());
 
-const db = mysql.createConnection({
+export const db: mysql.Connection = mysql.createConnection({
   host: process.env.DB_HOST as string,
   user: process.env.DB_USER as string,
   password: process.env.DB_PASSWORD as string,
@@ -30,9 +31,17 @@ app.post('/api/login', async (req: Request, res: Response) => {
   db.query('SELECT * FROM users WHERE username = ?', [username], async (err: Error | null, results: any[]) => {
     if (err || results.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
     const user = results[0];
+    console.log('User from DB:', user);
     if (!await comparePassword(password, user.password)) return res.status(401).json({ error: 'Invalid credentials' });
-    const token = generateToken(user.id);
+    const token = generateToken(user.user_id);
     res.json({ token });
+  });
+});
+app.post('/api/genres', verifyToken, isAdmin, (req: Request, res: Response) => {
+  const { name } = req.body as { name: string };
+  db.query('INSERT INTO genres (name) VALUES (?)', [name], (err: Error | null) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ message: 'Genre added' });
   });
 });
 
