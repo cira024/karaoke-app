@@ -7,7 +7,16 @@ export const hashPassword = async (password: string): Promise<string> => {
 };
 
 export const comparePassword = async (password: string, hashed: string): Promise<boolean> => {
-  return bcrypt.compare(password, hashed);
+  try {
+    console.log('comparePassword - uneta:', password);
+    console.log('comparePassword - heš iz baze:', hashed);
+    const result = await bcrypt.compare(password, hashed);
+    console.log('bcrypt.compare rezultat:', result);
+    return result;
+  } catch (err) {
+    console.error('Greška u comparePassword:', err);
+    return false;
+  }
 };
 
 export const generateToken = (userId: number): string => {
