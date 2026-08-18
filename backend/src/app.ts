@@ -6,8 +6,31 @@ import { verifyToken, isAdmin } from './middleware/authMiddleware';
 
 const cors = require('cors');
 const app = express();
+const multer = require('multer');
+const path = require('path');
 app.use(cors());
 app.use(express.json());
+// Upload konfiguracija
+const storage = multer.diskStorage({
+  destination: (req: any, file: any, cb: any) => {
+    if (file.fieldname === 'audio') {
+      cb(null, 'public/songs/audio');
+    } else if (file.fieldname === 'lyrics') {
+      cb(null, 'public/songs/lyrics');
+    } else if (file.fieldname === 'image') {
+      cb(null, 'public/songs/images');
+    } else {
+      cb(null, 'public/songs');
+    }
+  },
+  filename: (req: any, file: any, cb: any) => {
+    const uniqueName = Date.now() + '-' + file.originalname;
+    cb(null, uniqueName);
+  }
+});
+
+const upload = multer({ storage });
+
 app.use('/songs', express.static('public/songs'));
 
 export const db: mysql.Connection = mysql.createConnection({
@@ -52,6 +75,21 @@ app.get('/api/songs', (req: Request, res: Response) => {
     res.json(results);
   });
 });
+// Lista žanrova
+app.get('/api/genres', (req: Request, res: Response) => {
+  db.query('SELECT genre_id, name FROM genres WHERE deleted_at IS NULL ORDER BY name', (err: Error | null, results: any[]) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
+
+// Lista izvođača
+app.get('/api/artists', (req: Request, res: Response) => {
+  db.query('SELECT artist_id, name FROM artist WHERE deleted_at IS NULL ORDER BY name', (err: Error | null, results: any[]) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(results);
+  });
+});
 
 app.post('/api/login', async (req: Request, res: Response) => {
   const { username, password } = req.body;
@@ -80,8 +118,40 @@ app.post('/api/login', async (req: Request, res: Response) => {
     }
 
     const token = generateToken(user.user_id);
-    console.log('Login uspešan, token generisan');
-    res.json({ token });
+      res.json({ 
+        token,
+        is_admin: user.is_admin,
+        username: user.username
+      });
+  });
+});
+app.post('/api/songs', verifyToken, isAdmin, upload.fields([
+  { name: 'audio', maxCount: 1 },
+  { name: 'lyrics', maxCount: 1 },
+  { name: 'image', maxCount: 1 }
+]), (req: any, res: Response) => {
+  const { name, about, genre_id, artist_id } = req.body;
+  const files = req.files;
+
+  if (!name || !genre_id || !artist_id || !files?.audio || !files?.lyrics) {
+    return res.status(400).json({ error: 'Nedostaju obavezna polja' });
+  }
+
+  const path_to_audio = '/songs/audio/' + files.audio[0].filename;
+  const path_to_lyrics = '/songs/lyrics/' + files.lyrics[0].filename;
+  const path_to_img = files.image ? '/songs/images/' + files.image[0].filename : null;
+
+  const sql = `
+    INSERT INTO songs (genre_id, artist_id, name, about, path_to_audio, path_to_lyrics, path_to_img)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `;
+
+  db.query(sql, [genre_id, artist_id, name, about || null, path_to_audio, path_to_lyrics, path_to_img], (err: Error | null) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: 'Pesma uspešno dodata' });
   });
 });
 app.post('/api/genres', verifyToken, isAdmin, (req: Request, res: Response) => {

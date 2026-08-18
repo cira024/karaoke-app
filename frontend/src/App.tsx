@@ -4,6 +4,8 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 
 interface LoginResponse {
   token: string;
+  is_admin?: number | boolean;
+  username?: string;
 }
 
 interface Song {
@@ -25,6 +27,16 @@ interface Cue {
   text: string;
 }
 
+interface Genre {
+  genre_id: number;
+  name: string;
+}
+
+interface Artist {
+  artist_id: number;
+  name: string;
+}
+
 const App: React.FC = () => {
   const [token, setToken] = useState<string | null>(null);
   const [songs, setSongs] = useState<Song[]>([]);
@@ -42,6 +54,25 @@ const App: React.FC = () => {
   const [currentLyric, setCurrentLyric] = useState<string>('');
   const audioRef = useRef<HTMLAudioElement>(null);
 
+  // Admin
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
+
+  // Forma za novu pesmu
+  const [newSong, setNewSong] = useState({
+    name: '',
+    about: '',
+    genre_id: '',
+    artist_id: ''
+  });
+  const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [lyricsFile, setLyricsFile] = useState<File | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
+  // Dropdown podaci
+  const [genres, setGenres] = useState<Genre[]>([]);
+  const [artists, setArtists] = useState<Artist[]>([]);
+
   // ========== LOGIN ==========
   const handleLogin = async () => {
     setLoading(true);
@@ -52,7 +83,9 @@ const App: React.FC = () => {
         password
       });
       setToken(res.data.token);
+      setIsAdmin(!!res.data.is_admin);
       fetchSongs(res.data.token);
+      fetchGenresAndArtists();
     } catch (err) {
       setError('Pogrešan username ili password');
     } finally {
@@ -72,6 +105,19 @@ const App: React.FC = () => {
     }
   };
 
+  const fetchGenresAndArtists = async () => {
+    try {
+      const [genresRes, artistsRes] = await Promise.all([
+        axios.get<Genre[]>('http://localhost:5000/api/genres'),
+        axios.get<Artist[]>('http://localhost:5000/api/artists')
+      ]);
+      setGenres(genresRes.data);
+      setArtists(artistsRes.data);
+    } catch (err) {
+      console.error('Greška pri učitavanju žanrova/izvođača', err);
+    }
+  };
+
   const handleLogout = () => {
     setToken(null);
     setSongs([]);
@@ -80,6 +126,44 @@ const App: React.FC = () => {
     setSelectedSong(null);
     setUsername('');
     setPassword('');
+    setIsAdmin(false);
+    setShowAddForm(false);
+  };
+
+  // ========== DODAVANJE PESME ==========
+  const handleAddSong = async () => {
+    if (!newSong.name || !newSong.genre_id || !newSong.artist_id || !audioFile || !lyricsFile) {
+      alert('Popuni sva obavezna polja (naziv, žanr, izvođač, audio i lyrics)');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('name', newSong.name);
+    formData.append('about', newSong.about);
+    formData.append('genre_id', newSong.genre_id);
+    formData.append('artist_id', newSong.artist_id);
+    formData.append('audio', audioFile);
+    formData.append('lyrics', lyricsFile);
+    if (imageFile) formData.append('image', imageFile);
+
+    try {
+      await axios.post('http://localhost:5000/api/songs', formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Pesma uspešno dodata!');
+      setShowAddForm(false);
+      setNewSong({ name: '', about: '', genre_id: '', artist_id: '' });
+      setAudioFile(null);
+      setLyricsFile(null);
+      setImageFile(null);
+      if (token) fetchSongs(token);
+    } catch (err) {
+      console.error(err);
+      alert('Greška pri dodavanju pesme');
+    }
   };
 
   // ========== PARSE WEBVTT ==========
@@ -91,7 +175,6 @@ const App: React.FC = () => {
     while (i < lines.length) {
       const line = lines[i].trim();
 
-      // Tražimo liniju sa vremenom (npr. 00:00:12.000 --> 00:00:15.500)
       if (line.includes('-->')) {
         const [startStr, endStr] = line.split('-->').map(s => s.trim());
         const start = timeToSeconds(startStr);
@@ -119,7 +202,6 @@ const App: React.FC = () => {
   };
 
   const timeToSeconds = (time: string): number => {
-    // Podržava i 00:00:12.000 i 00:12.000
     const parts = time.replace(',', '.').split(':').map(Number);
     if (parts.length === 3) {
       return parts[0] * 3600 + parts[1] * 60 + parts[2];
@@ -130,7 +212,7 @@ const App: React.FC = () => {
     return 0;
   };
 
-  // ========== UČITAJ TITLOVE KADA SE IZABERE PESMA ==========
+  // ========== UČITAJ TITLOVE ==========
   useEffect(() => {
     if (!selectedSong) {
       setCues([]);
@@ -144,7 +226,6 @@ const App: React.FC = () => {
         const text = await res.text();
         const parsed = parseWebVTT(text);
         setCues(parsed);
-        console.log('Učitano titlova:', parsed.length);
       } catch (err) {
         console.error('Greška pri učitavanju titlova:', err);
         setCurrentLyric('Greška pri učitavanju titlova');
@@ -154,7 +235,7 @@ const App: React.FC = () => {
     loadLyrics();
   }, [selectedSong]);
 
-  // ========== PRATI VREME AUDIO-A I PRIKAŽI TRENUTNI STI ==========
+  // ========== PRATI VREME AUDIO-A ==========
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio || cues.length === 0) return;
@@ -219,7 +300,6 @@ const App: React.FC = () => {
 
             <div className="card shadow">
               <div className="card-body p-4">
-                {/* SLIKA */}
                 {selectedSong.path_to_img && (
                   <div className="text-center mb-3">
                     <img
@@ -237,7 +317,6 @@ const App: React.FC = () => {
                   <span className="badge bg-secondary mb-3">{selectedSong.genre_name}</span>
                 )}
 
-                {/* AUDIO */}
                 <audio
                   ref={audioRef}
                   controls
@@ -245,7 +324,6 @@ const App: React.FC = () => {
                   src={`http://localhost:5000${selectedSong.path_to_audio}`}
                 />
 
-                {/* LYRICS */}
                 <div
                   className="bg-dark text-white p-4 rounded d-flex align-items-center justify-content-center"
                   style={{ minHeight: '160px' }}
@@ -255,7 +333,6 @@ const App: React.FC = () => {
                   </h3>
                 </div>
 
-                {/* RATING PLACEHOLDER */}
                 <div className="mt-4">
                   <h5>Oceni pesmu:</h5>
                   <div className="btn-group">
@@ -270,12 +347,122 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
+      ) : showAddForm ? (
+        /* ========== FORMA ZA DODAVANJE PESME ========== */
+        <div className="row justify-content-center">
+          <div className="col-md-8">
+            <button className="btn btn-outline-secondary mb-3" onClick={() => setShowAddForm(false)}>
+              ← Nazad na listu
+            </button>
+
+            <div className="card shadow">
+              <div className="card-body p-4">
+                <h3 className="mb-4">Dodaj novu pesmu</h3>
+
+                <div className="mb-3">
+                  <label className="form-label">Naziv pesme *</label>
+                  <input
+                    className="form-control"
+                    value={newSong.name}
+                    onChange={(e) => setNewSong({ ...newSong, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Opis</label>
+                  <textarea
+                    className="form-control"
+                    rows={2}
+                    value={newSong.about}
+                    onChange={(e) => setNewSong({ ...newSong, about: e.target.value })}
+                  />
+                </div>
+
+                <div className="row mb-3">
+                  <div className="col-md-6">
+                    <label className="form-label">Žanr *</label>
+                    <select
+                      className="form-select"
+                      value={newSong.genre_id}
+                      onChange={(e) => setNewSong({ ...newSong, genre_id: e.target.value })}
+                    >
+                      <option value="">Izaberi žanr</option>
+                      {genres.map((g) => (
+                        <option key={g.genre_id} value={g.genre_id}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label className="form-label">Izvođač *</label>
+                    <select
+                      className="form-select"
+                      value={newSong.artist_id}
+                      onChange={(e) => setNewSong({ ...newSong, artist_id: e.target.value })}
+                    >
+                      <option value="">Izaberi izvođača</option>
+                      {artists.map((a) => (
+                        <option key={a.artist_id} value={a.artist_id}>
+                          {a.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Audio fajl (instrumental) *</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="audio/*"
+                    onChange={(e) => setAudioFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label">Lyrics fajl (WebVTT / SRT) *</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept=".vtt,.srt"
+                    onChange={(e) => setLyricsFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+
+                <div className="mb-4">
+                  <label className="form-label">Slika (opciono)</label>
+                  <input
+                    type="file"
+                    className="form-control"
+                    accept="image/*"
+                    onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                  />
+                </div>
+
+                <button className="btn btn-success w-100" onClick={handleAddSong}>
+                  Sačuvaj pesmu
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       ) : (
         /* ========== LISTA PESAMA ========== */
         <>
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2>🎵 Dostupne pesme</h2>
-            <button className="btn btn-outline-danger" onClick={handleLogout}>Odjavi se</button>
+            <div>
+              {isAdmin && (
+                <button className="btn btn-success me-2" onClick={() => setShowAddForm(true)}>
+                  + Dodaj pesmu
+                </button>
+              )}
+              <button className="btn btn-outline-danger" onClick={handleLogout}>
+                Odjavi se
+              </button>
+            </div>
           </div>
 
           <div className="row mb-4">
