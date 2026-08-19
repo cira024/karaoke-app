@@ -165,6 +165,25 @@ const App: React.FC = () => {
       alert('Greška pri dodavanju pesme');
     }
   };
+  const handleRate = async (songId: number, rate: number) => {
+    if (!token) return;
+
+    try {
+      await axios.post(
+        `http://localhost:5000/api/songs/${songId}/rate`,
+        { rate },
+        {
+          headers: { Authorization: `Bearer ${token}` }
+        }
+      );
+      alert(`Ocena ${rate} ★ sačuvana!`);
+      // Osveži listu pesama da se vidi nova prosečna ocena
+      fetchSongs(token);
+    } catch (err) {
+      console.error(err);
+      alert('Greška pri ocenjivanju');
+    }
+  };
 
   // ========== PARSE WEBVTT ==========
   const parseWebVTT = (text: string): Cue[] => {
@@ -337,11 +356,21 @@ const App: React.FC = () => {
                   <h5>Oceni pesmu:</h5>
                   <div className="btn-group">
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <button key={star} className="btn btn-outline-warning">
+                      <button
+                        key={star}
+                        className="btn btn-outline-warning"
+                        onClick={() => selectedSong && handleRate(selectedSong.song_id, star)}
+                      >
                         {star} ★
                       </button>
                     ))}
                   </div>
+                  {selectedSong.average_rating && (
+                    <p className="mt-2 text-muted">
+                      Trenutna prosečna ocena: <strong>{Number(selectedSong.average_rating).toFixed(1)} ★</strong>
+                      {selectedSong.rating_count ? ` (${selectedSong.rating_count} ocena)` : ''}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -496,7 +525,7 @@ const App: React.FC = () => {
                       {song.genre_name && <span className="badge bg-secondary mb-2">{song.genre_name}</span>}
                       {song.average_rating && (
                         <p className="mb-2">
-                          <strong>{song.average_rating.toFixed(1)} ★</strong>
+                          <strong>{Number(song.average_rating).toFixed(1)} ★</strong>
                           {song.rating_count && <small className="text-muted"> ({song.rating_count})</small>}
                         </p>
                       )}

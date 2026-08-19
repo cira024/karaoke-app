@@ -154,6 +154,35 @@ app.post('/api/songs', verifyToken, isAdmin, upload.fields([
     res.json({ message: 'Pesma uspešno dodata' });
   });
 });
+// Ocenjivanje pesme
+app.post('/api/songs/:id/rate', verifyToken, (req: any, res: Response) => {
+  const songId = req.params.id;
+  const userId = req.user?.id || req.user?.user_id;
+  const { rate } = req.body;
+
+  if (!rate || rate < 1 || rate > 5) {
+    return res.status(400).json({ error: 'Ocena mora biti između 1 i 5' });
+  }
+
+  if (!userId) {
+    return res.status(401).json({ error: 'Niste ulogovani' });
+  }
+
+  // INSERT ili UPDATE ako korisnik već ocenio
+  const sql = `
+    INSERT INTO rate (user_id, song_id, rate)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE rate = VALUES(rate), updated_at = CURRENT_TIMESTAMP
+  `;
+
+  db.query(sql, [userId, songId, rate], (err: Error | null) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: 'Ocena sačuvana', rate });
+  });
+});
 app.post('/api/genres', verifyToken, isAdmin, (req: Request, res: Response) => {
   const { name } = req.body as { name: string };
   db.query('INSERT INTO genres (name) VALUES (?)', [name], (err: Error | null) => {
