@@ -183,6 +183,23 @@ app.post('/api/songs/:id/rate', verifyToken, (req: any, res: Response) => {
     res.json({ message: 'Ocena sačuvana', rate });
   });
 });
+// Brisanje pesme (admin) - soft delete
+app.delete('/api/songs/:id', verifyToken, isAdmin, (req: any, res: Response) => {
+  const songId = req.params.id;
+
+  const sql = `UPDATE songs SET deleted_at = CURRENT_TIMESTAMP WHERE song_id = ? AND deleted_at IS NULL`;
+
+  db.query(sql, [songId], (err: Error | null, result: any) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Pesma nije pronađena' });
+    }
+    res.json({ message: 'Pesma obrisana' });
+  });
+});
 app.post('/api/genres', verifyToken, isAdmin, (req: Request, res: Response) => {
   const { name } = req.body as { name: string };
   db.query('INSERT INTO genres (name) VALUES (?)', [name], (err: Error | null) => {

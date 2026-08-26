@@ -42,11 +42,13 @@ const App: React.FC = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'rating'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'artist' | 'rating' | 'rating_count'>('name');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedGenre, setSelectedGenre] = useState('');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   // Player
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -184,6 +186,21 @@ const App: React.FC = () => {
       alert('Greška pri ocenjivanju');
     }
   };
+  const handleDeleteSong = async (songId: number, songName: string) => {
+    if (!token) return;
+    if (!window.confirm(`Obriši pesmu "${songName}"?`)) return;
+
+    try {
+      await axios.delete(`http://localhost:5000/api/songs/${songId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      alert('Pesma obrisana');
+      fetchSongs(token);
+    } catch (err) {
+      console.error(err);
+      alert('Greška pri brisanju pesme');
+    }
+  };
 
   // ========== PARSE WEBVTT ==========
   const parseWebVTT = (text: string): Cue[] => {
@@ -273,6 +290,7 @@ const App: React.FC = () => {
   useEffect(() => {
     let result = [...songs];
 
+    // Pretraga po nazivu / izvođaču
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
       result = result.filter(song =>
@@ -281,14 +299,28 @@ const App: React.FC = () => {
       );
     }
 
-    if (sortBy === 'name') {
-      result.sort((a, b) => a.name.localeCompare(b.name));
-    } else {
-      result.sort((a, b) => (b.average_rating || 0) - (a.average_rating || 0));
+    // Filter po žanru
+    if (selectedGenre) {
+      result = result.filter(song => song.genre_name === selectedGenre);
     }
 
+    // Sortiranje
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'name') {
+        cmp = a.name.localeCompare(b.name);
+      } else if (sortBy === 'artist') {
+        cmp = (a.artist_name || '').localeCompare(b.artist_name || '');
+      } else if (sortBy === 'rating') {
+        cmp = (Number(a.average_rating) || 0) - (Number(b.average_rating) || 0);
+      } else if (sortBy === 'rating_count') {
+        cmp = (a.rating_count || 0) - (b.rating_count || 0);
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
     setFilteredSongs(result);
-  }, [songs, searchTerm, sortBy]);
+  }, [songs, searchTerm, selectedGenre, sortBy, sortOrder]);
 
   return (
     <div className="container mt-4">
@@ -494,23 +526,53 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          <div className="row mb-4">
-            <div className="col-md-6">
-              <input
-                type="text"
-                className="form-control"
-                placeholder="🔍 Pretraži pesme ili izvođača..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <div className="col-md-3">
-              <select className="form-select" value={sortBy} onChange={(e) => setSortBy(e.target.value as 'name' | 'rating')}>
-                <option value="name">Sortiraj po nazivu</option>
-                <option value="rating">Sortiraj po oceni</option>
-              </select>
-            </div>
-          </div>
+                <div className="row mb-4 g-2">
+                  <div className="col-md-4">
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="🔍 Pretraži pesme ili izvođača..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <select
+                      className="form-select"
+                      value={selectedGenre}
+                      onChange={(e) => setSelectedGenre(e.target.value)}
+                    >
+                      <option value="">Svi žanrovi</option>
+                      {genres.map((g) => (
+                        <option key={g.genre_id} value={g.name}>
+                          {g.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-3">
+                    <select
+                      className="form-select"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as 'name' | 'artist' | 'rating' | 'rating_count')}
+                    >
+                      <option value="name">Po nazivu</option>
+                      <option value="artist">Po izvođaču</option>
+                      <option value="rating">Po oceni</option>
+                      <option value="rating_count">Po broju ocena</option>
+                    </select>
+                  </div>
+                  <div className="col-md-2">
+                    <select
+                      className="form-select"
+                      value={sortOrder}
+                      onChange={(e) => setSortOrder(e.target.value as 'asc' | 'desc')}
+                    >
+                      <option value="asc">Rastuće</option>
+                      <option value="desc">Opadajuće</option>
+                    </select>
+                  </div>
+                </div>
 
           <div className="row">
             {filteredSongs.length === 0 ? (
@@ -532,6 +594,14 @@ const App: React.FC = () => {
                       <button className="btn btn-primary mt-auto" onClick={() => setSelectedSong(song)}>
                         🎤 Pusti
                       </button>
+                      {isAdmin && (
+                        <button
+                          className="btn btn-outline-danger btn-sm mt-2"
+                          onClick={() => handleDeleteSong(song.song_id, song.name)}
+                        >
+                          Obriši
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
