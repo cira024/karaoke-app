@@ -75,12 +75,60 @@ app.get('/api/songs', (req: Request, res: Response) => {
     res.json(results);
   });
 });
+
 // Lista žanrova
 app.get('/api/genres', (req: Request, res: Response) => {
   db.query('SELECT genre_id, name FROM genres WHERE deleted_at IS NULL ORDER BY name', (err: Error | null, results: any[]) => {
     if (err) return res.status(500).json({ error: err.message });
     res.json(results);
   });
+});
+
+// Dodaj žanr
+app.post('/api/genres', verifyToken, isAdmin, (req: any, res: Response) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Naziv žanra je obavezan' });
+  }
+
+  db.query('INSERT INTO genres (name) VALUES (?)', [name.trim()], (err: Error | null) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: 'Žanr dodat' });
+  });
+});
+
+// Izmeni žanr
+app.put('/api/genres/:id', verifyToken, isAdmin, (req: any, res: Response) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Naziv žanra je obavezan' });
+  }
+
+  db.query(
+    'UPDATE genres SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE genre_id = ? AND deleted_at IS NULL',
+    [name.trim(), req.params.id],
+    (err: Error | null, result: any) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Žanr nije pronađen' });
+      res.json({ message: 'Žanr izmenjen' });
+    }
+  );
+});
+
+// Obriši žanr (soft delete)
+app.delete('/api/genres/:id', verifyToken, isAdmin, (req: any, res: Response) => {
+  db.query(
+    'UPDATE genres SET deleted_at = CURRENT_TIMESTAMP WHERE genre_id = ? AND deleted_at IS NULL',
+    [req.params.id],
+    (err: Error | null, result: any) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Žanr nije pronađen' });
+      res.json({ message: 'Žanr obrisan' });
+    }
+  );
 });
 
 // Lista izvođača
@@ -200,12 +248,6 @@ app.delete('/api/songs/:id', verifyToken, isAdmin, (req: any, res: Response) => 
     res.json({ message: 'Pesma obrisana' });
   });
 });
-app.post('/api/genres', verifyToken, isAdmin, (req: Request, res: Response) => {
-  const { name } = req.body as { name: string };
-  db.query('INSERT INTO genres (name) VALUES (?)', [name], (err: Error | null) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ message: 'Genre added' });
-  });
-});
+
 
 app.listen(5000, () => console.log('Server running on port 5000'));

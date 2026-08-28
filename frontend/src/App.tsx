@@ -49,6 +49,10 @@ const App: React.FC = () => {
   const [error, setError] = useState('');
   const [selectedGenre, setSelectedGenre] = useState('');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [showGenresPanel, setShowGenresPanel] = useState(false);
+  const [newGenreName, setNewGenreName] = useState('');
+  const [editingGenreId, setEditingGenreId] = useState<number | null>(null);
+  const [editingGenreName, setEditingGenreName] = useState('');
 
   // Player
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -186,6 +190,7 @@ const App: React.FC = () => {
       alert('Greška pri ocenjivanju');
     }
   };
+
   const handleDeleteSong = async (songId: number, songName: string) => {
     if (!token) return;
     if (!window.confirm(`Obriši pesmu "${songName}"?`)) return;
@@ -201,6 +206,56 @@ const App: React.FC = () => {
       alert('Greška pri brisanju pesme');
     }
   };
+
+  const handleAddGenre = async () => {
+  if (!newGenreName.trim() || !token) return;
+  try {
+    await axios.post(
+      'http://localhost:5000/api/genres',
+      { name: newGenreName.trim() },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setNewGenreName('');
+    fetchGenresAndArtists();
+    alert('Žanr dodat');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri dodavanju žanra');
+  }
+};
+
+const handleUpdateGenre = async (id: number) => {
+  if (!editingGenreName.trim() || !token) return;
+  try {
+    await axios.put(
+      `http://localhost:5000/api/genres/${id}`,
+      { name: editingGenreName.trim() },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setEditingGenreId(null);
+    setEditingGenreName('');
+    fetchGenresAndArtists();
+    alert('Žanr izmenjen');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri izmeni žanra');
+  }
+};
+
+const handleDeleteGenre = async (id: number, name: string) => {
+  if (!token) return;
+  if (!window.confirm(`Obriši žanr "${name}"?`)) return;
+  try {
+    await axios.delete(`http://localhost:5000/api/genres/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    fetchGenresAndArtists();
+    alert('Žanr obrisan');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri brisanju žanra');
+  }
+};
 
   // ========== PARSE WEBVTT ==========
   const parseWebVTT = (text: string): Cue[] => {
@@ -408,7 +463,76 @@ const App: React.FC = () => {
             </div>
           </div>
         </div>
-      ) : showAddForm ? (
+      ) : showGenresPanel ? (
+  <div className="row justify-content-center">
+    <div className="col-md-8">
+      <button className="btn btn-outline-secondary mb-3" onClick={() => setShowGenresPanel(false)}>
+        ← Nazad na listu
+      </button>
+
+      <div className="card shadow">
+        <div className="card-body p-4">
+          <h3 className="mb-4">Upravljanje žanrovima</h3>
+
+          <div className="input-group mb-4">
+            <input
+              className="form-control"
+              placeholder="Naziv novog žanra"
+              value={newGenreName}
+              onChange={(e) => setNewGenreName(e.target.value)}
+            />
+            <button className="btn btn-success" onClick={handleAddGenre}>
+              Dodaj
+            </button>
+          </div>
+
+          <ul className="list-group">
+            {genres.map((g) => (
+              <li key={g.genre_id} className="list-group-item d-flex justify-content-between align-items-center">
+                {editingGenreId === g.genre_id ? (
+                  <div className="input-group">
+                    <input
+                      className="form-control"
+                      value={editingGenreName}
+                      onChange={(e) => setEditingGenreName(e.target.value)}
+                    />
+                    <button className="btn btn-primary" onClick={() => handleUpdateGenre(g.genre_id)}>
+                      Sačuvaj
+                    </button>
+                    <button className="btn btn-outline-secondary" onClick={() => setEditingGenreId(null)}>
+                      Otkaži
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <span>{g.name}</span>
+                    <div>
+                      <button
+                        className="btn btn-sm btn-outline-primary me-2"
+                        onClick={() => {
+                          setEditingGenreId(g.genre_id);
+                          setEditingGenreName(g.name);
+                        }}
+                      >
+                        Izmeni
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDeleteGenre(g.genre_id, g.name)}
+                      >
+                        Obriši
+                      </button>
+                    </div>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+) : showAddForm ? (
         /* ========== FORMA ZA DODAVANJE PESME ========== */
         <div className="row justify-content-center">
           <div className="col-md-8">
@@ -515,11 +639,16 @@ const App: React.FC = () => {
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2>🎵 Dostupne pesme</h2>
             <div>
-              {isAdmin && (
-                <button className="btn btn-success me-2" onClick={() => setShowAddForm(true)}>
-                  + Dodaj pesmu
-                </button>
-              )}
+                    {isAdmin && (
+                      <>
+                        <button className="btn btn-success me-2" onClick={() => setShowAddForm(true)}>
+                          + Dodaj pesmu
+                        </button>
+                        <button className="btn btn-outline-primary me-2" onClick={() => setShowGenresPanel(true)}>
+                          Žanrovi
+                        </button>
+                      </>
+                    )}
               <button className="btn btn-outline-danger" onClick={handleLogout}>
                 Odjavi se
               </button>
