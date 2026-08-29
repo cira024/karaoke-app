@@ -53,6 +53,10 @@ const App: React.FC = () => {
   const [newGenreName, setNewGenreName] = useState('');
   const [editingGenreId, setEditingGenreId] = useState<number | null>(null);
   const [editingGenreName, setEditingGenreName] = useState('');
+  const [showArtistsPanel, setShowArtistsPanel] = useState(false);
+  const [newArtistName, setNewArtistName] = useState('');
+  const [editingArtistId, setEditingArtistId] = useState<number | null>(null);
+  const [editingArtistName, setEditingArtistName] = useState('');
 
   // Player
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -254,6 +258,56 @@ const handleDeleteGenre = async (id: number, name: string) => {
   } catch (err) {
     console.error(err);
     alert('Greška pri brisanju žanra');
+  }
+};
+
+const handleAddArtist = async () => {
+  if (!newArtistName.trim() || !token) return;
+  try {
+    await axios.post(
+      'http://localhost:5000/api/artists',
+      { name: newArtistName.trim() },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setNewArtistName('');
+    fetchGenresAndArtists();
+    alert('Izvođač dodat');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri dodavanju izvođača');
+  }
+};
+
+const handleUpdateArtist = async (id: number) => {
+  if (!editingArtistName.trim() || !token) return;
+  try {
+    await axios.put(
+      `http://localhost:5000/api/artists/${id}`,
+      { name: editingArtistName.trim() },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setEditingArtistId(null);
+    setEditingArtistName('');
+    fetchGenresAndArtists();
+    alert('Izvođač izmenjen');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri izmeni izvođača');
+  }
+};
+
+const handleDeleteArtist = async (id: number, name: string) => {
+  if (!token) return;
+  if (!window.confirm(`Obriši izvođača "${name}"?`)) return;
+  try {
+    await axios.delete(`http://localhost:5000/api/artists/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    fetchGenresAndArtists();
+    alert('Izvođač obrisan');
+  } catch (err) {
+    console.error(err);
+    alert('Greška pri brisanju izvođača');
   }
 };
 
@@ -463,7 +517,77 @@ const handleDeleteGenre = async (id: number, name: string) => {
             </div>
           </div>
         </div>
-      ) : showGenresPanel ? (
+     
+        ) : showArtistsPanel ? (
+          <div className="row justify-content-center">
+            <div className="col-md-8">
+              <button className="btn btn-outline-secondary mb-3" onClick={() => setShowArtistsPanel(false)}>
+                ← Nazad na listu
+              </button>
+
+              <div className="card shadow">
+                <div className="card-body p-4">
+                  <h3 className="mb-4">Upravljanje izvođačima</h3>
+
+                  <div className="input-group mb-4">
+                    <input
+                      className="form-control"
+                      placeholder="Naziv novog izvođača"
+                      value={newArtistName}
+                      onChange={(e) => setNewArtistName(e.target.value)}
+                    />
+                    <button className="btn btn-success" onClick={handleAddArtist}>
+                      Dodaj
+                    </button>
+                  </div>
+
+                  <ul className="list-group">
+                    {artists.map((a) => (
+                      <li key={a.artist_id} className="list-group-item d-flex justify-content-between align-items-center">
+                        {editingArtistId === a.artist_id ? (
+                          <div className="input-group">
+                            <input
+                              className="form-control"
+                              value={editingArtistName}
+                              onChange={(e) => setEditingArtistName(e.target.value)}
+                            />
+                            <button className="btn btn-primary" onClick={() => handleUpdateArtist(a.artist_id)}>
+                              Sačuvaj
+                            </button>
+                            <button className="btn btn-outline-secondary" onClick={() => setEditingArtistId(null)}>
+                              Otkaži
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span>{a.name}</span>
+                            <div>
+                              <button
+                                className="btn btn-sm btn-outline-primary me-2"
+                                onClick={() => {
+                                  setEditingArtistId(a.artist_id);
+                                  setEditingArtistName(a.name);
+                                }}
+                              >
+                                Izmeni
+                              </button>
+                              <button
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() => handleDeleteArtist(a.artist_id, a.name)}
+                              >
+                                Obriši
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : showGenresPanel ? (
   <div className="row justify-content-center">
     <div className="col-md-8">
       <button className="btn btn-outline-secondary mb-3" onClick={() => setShowGenresPanel(false)}>
@@ -646,6 +770,9 @@ const handleDeleteGenre = async (id: number, name: string) => {
                         </button>
                         <button className="btn btn-outline-primary me-2" onClick={() => setShowGenresPanel(true)}>
                           Žanrovi
+                        </button>
+                        <button className="btn btn-outline-info me-2" onClick={() => setShowArtistsPanel(true)}>
+                          Izvođači
                         </button>
                       </>
                     )}

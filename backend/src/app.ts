@@ -139,6 +139,53 @@ app.get('/api/artists', (req: Request, res: Response) => {
   });
 });
 
+// Dodaj izvođača
+app.post('/api/artists', verifyToken, isAdmin, (req: any, res: Response) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Naziv izvođača je obavezan' });
+  }
+
+  db.query('INSERT INTO artist (name) VALUES (?)', [name.trim()], (err: Error | null) => {
+    if (err) {
+      console.error(err);
+      return res.status(500).json({ error: err.message });
+    }
+    res.json({ message: 'Izvođač dodat' });
+  });
+});
+
+// Izmeni izvođača
+app.put('/api/artists/:id', verifyToken, isAdmin, (req: any, res: Response) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Naziv izvođača je obavezan' });
+  }
+
+  db.query(
+    'UPDATE artist SET name = ?, updated_at = CURRENT_TIMESTAMP WHERE artist_id = ? AND deleted_at IS NULL',
+    [name.trim(), req.params.id],
+    (err: Error | null, result: any) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Izvođač nije pronađen' });
+      res.json({ message: 'Izvođač izmenjen' });
+    }
+  );
+});
+
+// Obriši izvođača (soft delete)
+app.delete('/api/artists/:id', verifyToken, isAdmin, (req: any, res: Response) => {
+  db.query(
+    'UPDATE artist SET deleted_at = CURRENT_TIMESTAMP WHERE artist_id = ? AND deleted_at IS NULL',
+    [req.params.id],
+    (err: Error | null, result: any) => {
+      if (err) return res.status(500).json({ error: err.message });
+      if (result.affectedRows === 0) return res.status(404).json({ error: 'Izvođač nije pronađen' });
+      res.json({ message: 'Izvođač obrisan' });
+    }
+  );
+});
+
 app.post('/api/login', async (req: Request, res: Response) => {
   const { username, password } = req.body;
   console.log('=== LOGIN POKUŠAJ ===');
