@@ -85,11 +85,24 @@ const App: React.FC = () => {
 
   // ========== LOGIN ==========
   const handleLogin = async () => {
+    if (!username.trim() || !password.trim()) {
+      setError('Unesi username i password');
+      return;
+    }
+    if (username.trim().length < 3) {
+      setError('Username mora imati najmanje 3 karaktera');
+      return;
+    }
+    if (password.length < 4) {
+      setError('Password mora imati najmanje 4 karaktera');
+      return;
+    }
+
     setLoading(true);
     setError('');
     try {
       const res = await axios.post<LoginResponse>('http://localhost:5000/api/login', {
-        username,
+        username: username.trim(),
         password
       });
       setToken(res.data.token);
@@ -142,8 +155,28 @@ const App: React.FC = () => {
 
   // ========== DODAVANJE PESME ==========
   const handleAddSong = async () => {
-    if (!newSong.name || !newSong.genre_id || !newSong.artist_id || !audioFile || !lyricsFile) {
-      alert('Popuni sva obavezna polja (naziv, žanr, izvođač, audio i lyrics)');
+    if (!newSong.name.trim()) {
+      alert('Naziv pesme je obavezan');
+      return;
+    }
+    if (newSong.name.trim().length < 2) {
+      alert('Naziv pesme mora imati najmanje 2 karaktera');
+      return;
+    }
+    if (!newSong.genre_id) {
+      alert('Izaberi žanr');
+      return;
+    }
+    if (!newSong.artist_id) {
+      alert('Izaberi izvođača');
+      return;
+    }
+    if (!audioFile) {
+      alert('Audio fajl je obavezan');
+      return;
+    }
+    if (!lyricsFile) {
+      alert('Lyrics fajl je obavezan');
       return;
     }
 

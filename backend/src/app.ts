@@ -188,6 +188,12 @@ app.delete('/api/artists/:id', verifyToken, isAdmin, (req: any, res: Response) =
 
 app.post('/api/login', async (req: Request, res: Response) => {
   const { username, password } = req.body;
+  if (!username || typeof username !== 'string' || username.trim().length < 3) {
+    return res.status(400).json({ error: 'Username mora imati najmanje 3 karaktera' });
+  }
+  if (!password || typeof password !== 'string' || password.length < 4) {
+    return res.status(400).json({ error: 'Password mora imati najmanje 4 karaktera' });
+  }
   console.log('=== LOGIN POKUŠAJ ===');
   console.log('Username:', username);
   console.log('Password uneta:', password);
@@ -227,10 +233,23 @@ app.post('/api/songs', verifyToken, isAdmin, upload.fields([
 ]), (req: any, res: Response) => {
   const { name, about, genre_id, artist_id } = req.body;
   const files = req.files;
-
-  if (!name || !genre_id || !artist_id || !files?.audio || !files?.lyrics) {
-    return res.status(400).json({ error: 'Nedostaju obavezna polja' });
+  if (!name || typeof name !== 'string' || name.trim().length < 2) {
+    return res.status(400).json({ error: 'Naziv pesme mora imati najmanje 2 karaktera' });
   }
+  if (!genre_id || isNaN(Number(genre_id))) {
+    return res.status(400).json({ error: 'Neispravan žanr' });
+  }
+  if (!artist_id || isNaN(Number(artist_id))) {
+    return res.status(400).json({ error: 'Neispravan izvođač' });
+  }
+  if (!files?.audio?.[0]) {
+    return res.status(400).json({ error: 'Audio fajl je obavezan' });
+  }
+  if (!files?.lyrics?.[0]) {
+    return res.status(400).json({ error: 'Lyrics fajl je obavezan' });
+  }
+
+  
 
   const path_to_audio = '/songs/audio/' + files.audio[0].filename;
   const path_to_lyrics = '/songs/lyrics/' + files.lyrics[0].filename;
@@ -255,6 +274,9 @@ app.post('/api/songs/:id/rate', verifyToken, (req: any, res: Response) => {
   const userId = req.user?.id || req.user?.user_id;
   const { rate } = req.body;
 
+  if (!Number.isInteger(Number(rate))) {
+    return res.status(400).json({ error: 'Ocena mora biti ceo broj' });
+  }
   if (!rate || rate < 1 || rate > 5) {
     return res.status(400).json({ error: 'Ocena mora biti između 1 i 5' });
   }
