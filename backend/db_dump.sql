@@ -1,10 +1,8 @@
-CREATE DATABASE  IF NOT EXISTS `karaoke` /*!40100 DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci */ /*!80016 DEFAULT ENCRYPTION='N' */;
-USE `karaoke`;
--- MySQL dump 10.13  Distrib 8.0.42, for Win64 (x86_64)
+-- MySQL dump 10.13  Distrib 8.0.44, for Win64 (x86_64)
 --
 -- Host: 127.0.0.1    Database: karaoke
 -- ------------------------------------------------------
--- Server version	8.0.42
+-- Server version	8.0.44
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -60,7 +58,7 @@ CREATE TABLE `genres` (
   `deleted_at` datetime DEFAULT NULL,
   PRIMARY KEY (`genre_id`),
   UNIQUE KEY `uq_genres_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -69,7 +67,7 @@ CREATE TABLE `genres` (
 
 LOCK TABLES `genres` WRITE;
 /*!40000 ALTER TABLE `genres` DISABLE KEYS */;
-INSERT INTO `genres` VALUES (1,'POP','2025-09-10 02:52:09',NULL,NULL),(2,'ROCK','2025-09-10 02:52:09',NULL,NULL),(3,'RAP','2025-09-10 02:52:09',NULL,NULL),(4,'RNB/SOUL','2025-09-10 02:52:09',NULL,NULL),(5,'LATINO','2025-09-10 02:52:09',NULL,NULL),(6,'blues','2025-11-25 06:10:37',NULL,NULL);
+INSERT INTO `genres` VALUES (1,'POP','2025-09-10 02:52:09',NULL,NULL),(2,'ROCK','2025-09-10 02:52:09',NULL,NULL),(3,'RAP','2025-09-10 02:52:09',NULL,NULL),(4,'RNB/SOUL','2025-09-10 02:52:09',NULL,NULL),(5,'LATINO','2025-09-10 02:52:09',NULL,NULL),(6,'blues','2025-11-25 06:10:37',NULL,'2026-08-28 03:31:15'),(7,'JAZZ','2025-12-15 06:14:27',NULL,NULL),(8,'REGGAE','2026-08-28 03:31:48','2026-08-28 03:32:16',NULL);
 /*!40000 ALTER TABLE `genres` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -93,7 +91,7 @@ CREATE TABLE `rate` (
   CONSTRAINT `fk_rate_songs` FOREIGN KEY (`song_id`) REFERENCES `songs` (`song_id`),
   CONSTRAINT `fk_rate_users` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `rate_chk_1` CHECK (((`rate` >= 1) and (`rate` <= 5)))
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -102,6 +100,7 @@ CREATE TABLE `rate` (
 
 LOCK TABLES `rate` WRITE;
 /*!40000 ALTER TABLE `rate` DISABLE KEYS */;
+INSERT INTO `rate` VALUES (1,2,1,5,'2026-08-19 04:00:48','2026-08-19 04:07:35');
 /*!40000 ALTER TABLE `rate` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -130,7 +129,7 @@ CREATE TABLE `songs` (
   KEY `fk_songs_artist_idx` (`artist_id`),
   CONSTRAINT `fk_songs_artist` FOREIGN KEY (`artist_id`) REFERENCES `artist` (`artist_id`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `fk_songs_genres` FOREIGN KEY (`genre_id`) REFERENCES `genres` (`genre_id`) ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -139,6 +138,7 @@ CREATE TABLE `songs` (
 
 LOCK TABLES `songs` WRITE;
 /*!40000 ALTER TABLE `songs` DISABLE KEYS */;
+INSERT INTO `songs` VALUES (1,2,1,'Smooth Criminal','Annie is not okay','/songs/images/Smooth_Criminal.jpg','/songs/audio/Michael Jackson- Smooth Criminal Instrumental.mp3','/songs/lyrics/Michael Jackson - Smooth Criminal.vtt','2026-07-26 01:11:10',NULL,NULL);
 /*!40000 ALTER TABLE `songs` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -169,7 +169,7 @@ CREATE TABLE `users` (
 
 LOCK TABLES `users` WRITE;
 /*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (2,'admin','$2b$10$v5rfvp3w2uqqFTN.H2BbAuLOujEbWB8peNNa49KCxuILCVNIVu/IK','rastko.stankovic17@singimail.rs',1,'2025-10-14 00:56:05','2025-10-14 00:56:05',1);
+INSERT INTO `users` VALUES (2,'admin','$2b$10$8DCr/uEGEjtooRh/ejaEduWKJXrFtvF2UHUx3VPPSMXpBQVjbjcWK','rastko.stankovic17@singimail.rs',1,'2025-10-14 00:56:05','2025-10-14 00:56:05',1);
 /*!40000 ALTER TABLE `users` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -182,4 +182,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-11-27  6:06:26
+-- Dump completed on 2026-08-29  3:49:39
