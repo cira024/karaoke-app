@@ -317,6 +317,11 @@ app.delete('/api/songs/:id', verifyToken, isAdmin, (req: any, res: Response) => 
     res.json({ message: 'Pesma obrisana' });
   });
 });
+// Statički frontend (React build)
+app.use(express.static(path.join(__dirname, '../../frontend/build')));
 
+app.get('/{*path}', (req: any, res: any) => {
+  res.sendFile(path.join(__dirname, '../../frontend/build', 'index.html'));
+});
 
 app.listen(5000, () => console.log('Server running on port 5000'));
